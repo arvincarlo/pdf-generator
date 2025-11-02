@@ -14,9 +14,11 @@
     "basic-auth": "^2.0.1",
     "express": "^5.1.0",
     "hummus": "^1.0.117",
+    "node-qpdf": "^1.0.3",
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.17.2",
-    "puppeteer": "^24.27.0"
+    "puppeteer": "^24.27.0",
+    "qpdf": "^0.1.0-prealpha.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

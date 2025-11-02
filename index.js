@@ -1,39 +1,55 @@
 const express = require('express');
-const basicAuth = require('basic-auth');
-const puppeteer = require('puppeteer');
+const PDFDocument = require('pdfkit');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const port = 3000;
 
-// Simple password middleware
-function auth(req, res, next) {
-  const user = basicAuth(req);
-  const username = 'admin';
-  const password = 'secret123';
-
-  if (user && user.name === username && user.pass === password) {
-    return next();
-  } else {
-    res.set('WWW-Authenticate', 'Basic realm="PDF Access"');
-    return res.status(401).send('Authentication required.');
+app.get('/generate-pdf', async (req, res) => {
+  const data = {
+    password: '12345'
   }
-}
+  const tempPath = path.join(__dirname, 'protected.pdf');
 
-app.get('/generate-pdf', auth, async (req, res) => {
   try {
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
+    // Step 1: Create password-protected PDF
+    const options = {
+      userPassword: data.password, // required to open
+      ownerPassword: data.password, // full access
+      permissions: {
+        printing: false,
+        modifying: false,
+        copying: false,
+        annotating: false,
+        fillingForms: false,
+        contentAccessibility: false,
+        documentAssembly: false
+      }
+    };
 
-    // You can customize this HTML or load from a file
-    await page.setContent('<h1>Hello from Puppeteer!</h1><p>This PDF is password protected via Express.</p>');
+    const doc = new PDFDocument(options);
+    const stream = fs.createWriteStream(tempPath);
+    doc.pipe(stream);
 
-    const pdfBuffer = await page.pdf({ format: 'A4' });
+    doc.text('This is a password protected PDF document.', 23, 23);
+    doc.addPage();
+    doc.text('Second page content.');
 
-    await browser.close();
+    doc.end();
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'inline; filename="puppeteer.pdf"');
-    res.send(pdfBuffer);
+    // Step 2: Wait for file to finish writing
+    stream.on('finish', () => {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="protected.pdf"');
+
+      const fileStream = fs.createReadStream(tempPath);
+      fileStream.pipe(res);
+
+      res.on('finish', () => {
+        fs.unlink(tempPath, () => {});
+      });
+    });
   } catch (err) {
     console.error(err);
     res.status(500).send('Failed to generate PDF');
@@ -42,4 +58,4 @@ app.get('/generate-pdf', auth, async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
-}); 
+});
