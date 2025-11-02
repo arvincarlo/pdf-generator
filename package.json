@@ -12,6 +12,7 @@
   "description": "",
   "dependencies": {
     "basic-auth": "^2.0.1",
+    "chartjs-node-canvas": "^5.0.0",
     "express": "^5.1.0",
     "hummus": "^1.0.117",
     "node-qpdf": "^1.0.3",

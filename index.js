@@ -2,21 +2,68 @@ const express = require('express');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 
 const app = express();
 const port = 3000;
 
+const width = 600;
+const height = 400;
+const chartCanvas = new ChartJSNodeCanvas({ width, height });
+
 app.get('/generate-pdf', async (req, res) => {
   const data = {
     password: '12345'
-  }
+  };
   const tempPath = path.join(__dirname, 'protected.pdf');
 
   try {
-    // Step 1: Create password-protected PDF
+    // Line Chart
+    const lineChartConfig = {
+      type: 'line',
+      data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+        datasets: [{
+          label: 'Sales',
+          data: [120, 150, 180, 90, 200],
+          borderColor: 'blue',
+          fill: false
+        }]
+      }
+    };
+    const lineChartBuffer = await chartCanvas.renderToBuffer(lineChartConfig);
+
+    // Bar Chart
+    const barChartConfig = {
+      type: 'bar',
+      data: {
+        labels: ['Red', 'Blue', 'Yellow'],
+        datasets: [{
+          label: 'Votes',
+          data: [12, 19, 3],
+          backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
+        }]
+      }
+    };
+    const barChartBuffer = await chartCanvas.renderToBuffer(barChartConfig);
+
+    // Pie Chart
+    const pieChartConfig = {
+      type: 'pie',
+      data: {
+        labels: ['Apple', 'Banana', 'Cherry'],
+        datasets: [{
+          data: [40, 30, 30],
+          backgroundColor: ['#FF9999', '#99FF99', '#9999FF']
+        }]
+      }
+    };
+    const pieChartBuffer = await chartCanvas.renderToBuffer(pieChartConfig);
+
+    // Create password-protected PDF
     const options = {
-      userPassword: data.password, // required to open
-      ownerPassword: data.password, // full access
+      userPassword: data.password,
+      ownerPassword: data.password,
       permissions: {
         printing: false,
         modifying: false,
@@ -32,13 +79,22 @@ app.get('/generate-pdf', async (req, res) => {
     const stream = fs.createWriteStream(tempPath);
     doc.pipe(stream);
 
-    doc.text('This is a password protected PDF document.', 23, 23);
+    doc.fontSize(16).text('Password Protected PDF with Charts', 50, 50);
+
     doc.addPage();
-    doc.text('Second page content.');
+    doc.fontSize(14).text('Line Chart:', 50, 50);
+    doc.image(lineChartBuffer, 50, 80, { width: 500 });
+
+    doc.addPage();
+    doc.fontSize(14).text('Bar Chart:', 50, 50);
+    doc.image(barChartBuffer, 50, 80, { width: 500 });
+
+    doc.addPage();
+    doc.fontSize(14).text('Pie Chart:', 50, 50);
+    doc.image(pieChartBuffer, 50, 80, { width: 500 });
 
     doc.end();
 
-    // Step 2: Wait for file to finish writing
     stream.on('finish', () => {
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', 'attachment; filename="protected.pdf"');
